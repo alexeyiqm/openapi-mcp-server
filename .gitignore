@@ -7,3 +7,5 @@ xmpt.yaml
 *.log
 .env
 .env.local
+coverage
+build

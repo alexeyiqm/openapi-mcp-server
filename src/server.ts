@@ -8,12 +8,14 @@ import {
 import { OpenAPISchemaLoader } from './schema-loader';
 import { APIClient } from './api-client';
 import { ToolGenerator } from './tool-generator';
-import { OpenAPIV3 } from 'openapi-types';
+import type { ToolMetadata } from './tool-generator';
 
 export interface ServerOptions {
   baseUrl?: string;
   additionalHeaders?: Record<string, string>;
   timeout?: number;
+  username?: string;
+  password?: string;
 }
 
 export class OpenAPIMCPServer {
@@ -66,11 +68,26 @@ export class OpenAPIMCPServer {
           args || {}
         );
 
+        // Get additional metadata for enhanced response
+        const metadata: ToolMetadata | undefined = this.toolGenerator.getToolMetadata(name);
+        
+        let responseText = JSON.stringify(result, null, 2);
+        
+        // Add metadata to response if available
+        if (metadata) {
+          const metadataInfo = `\n\n--- Request Info ---\nMethod: ${metadata.method}\nPath: ${metadata.path}`;
+          responseText = responseText + metadataInfo;
+          
+          if (metadata.tags && metadata.tags.length > 0) {
+            responseText += `\nTags: ${metadata.tags.join(', ')}`;
+          }
+        }
+
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(result, null, 2),
+              text: responseText,
             },
           ],
         };
@@ -103,7 +120,8 @@ export class OpenAPIMCPServer {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
       
-      console.error(`OpenAPI MCP Server started with ${this.tools.length} tools`);
+      const authInfo = this.options.username ? ' with basic authentication' : '';
+      console.error(`OpenAPI MCP Server started with ${this.tools.length} tools${authInfo}`);
     } catch (error) {
       console.error('Failed to start server:', error);
       throw error;

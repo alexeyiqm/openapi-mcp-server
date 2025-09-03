@@ -14,6 +14,8 @@ program
   .requiredOption('-s, --schema <path>', 'Path to OpenAPI schema file (JSON or YAML)')
   .option('-b, --base-url <url>', 'Override base URL from schema')
   .option('-h, --headers <headers>', 'Additional headers as JSON string')
+  .option('-u, --username <username>', 'Username for basic authentication')
+  .option('-p, --password <password>', 'Password for basic authentication')
   .parse();
 
 const options = program.opts();
@@ -38,10 +40,18 @@ async function main() {
       }
     }
 
+    // Validate authentication options
+    if ((options.username && !options.password) || (!options.username && options.password)) {
+      console.error('Both username and password must be provided for basic authentication');
+      process.exit(1);
+    }
+
     // Create and start the MCP server
     const server = new OpenAPIMCPServer(schemaPath, {
       baseUrl: options.baseUrl,
-      additionalHeaders
+      additionalHeaders,
+      username: options.username,
+      password: options.password
     });
 
     await server.start();
